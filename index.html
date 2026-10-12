@@ -11,25 +11,30 @@ header{background:linear-gradient(90deg,#0c7c9c,#17a2b8);color:#fff;padding:12px
 header h1{font-size:20px;margin:0}
 header svg{width:44px;height:44px;flex-shrink:0}
 nav{display:flex;flex-wrap:wrap;gap:6px;padding:10px;background:#fff;position:sticky;top:0;z-index:5;align-items:center}
-nav select{padding:7px;border-radius:6px;border:1px solid #bbb;font-size:15px}
+input,select,textarea{padding:8px;border:1px solid #bbb;border-radius:8px;font-size:15px;width:100%;margin:4px 0;background:#fff}
+nav select{width:auto}
 button{border:0;border-radius:8px;padding:8px 12px;background:#0c7c9c;color:#fff;font-size:15px;cursor:pointer}
 button.sec{background:#dde3e8;color:#123}
 button.on{background:#f5a623;color:#123}
 button.red{background:#c0392b}
-button:disabled{opacity:.4}
+button.ok{background:#2e8b57}
 main{padding:10px}
-.card{background:#fff;border-radius:10px;padding:10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:8px;box-shadow:0 1px 3px #0002}
+.box{background:#fff;border-radius:12px;padding:12px;margin-bottom:10px;box-shadow:0 1px 4px #0001}
+.card{background:#fff;border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:8px;box-shadow:0 1px 3px #0002;border-left:6px solid var(--c,#999)}
+.badge{display:inline-block;font-size:12px;font-weight:bold;color:#fff;background:var(--c,#999);border-radius:6px;padding:2px 7px;margin-left:4px}
 .qty{display:flex;align-items:center;gap:8px}
 .qty button{padding:4px 11px}
-.box{background:#fff;border-radius:10px;padding:12px;margin-bottom:10px;box-shadow:0 1px 3px #0002}
-input,select{padding:8px;border:1px solid #bbb;border-radius:6px;font-size:15px;width:100%;margin:4px 0}
-.total{font-size:20px;font-weight:bold;text-align:right;margin:10px 0}
-.bar{position:fixed;bottom:0;left:0;right:0;background:#123;color:#fff;padding:10px;display:flex;justify-content:space-between;align-items:center}
-.modal{position:fixed;inset:0;background:#0009;display:none;align-items:center;justify-content:center;padding:15px;z-index:9}
-.modal.on{display:flex}
-.modal .box{width:100%;max-width:380px}
 .muted{color:#678;font-size:13px}
 .row{display:flex;gap:6px;align-items:center}
+.sp{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:3px 0}
+.total{font-size:20px;font-weight:bold;text-align:right;margin:10px 0}
+.big{font-size:32px;font-weight:bold;text-align:center;color:#2e8b57;margin:8px 0}
+.bar{position:fixed;bottom:0;left:0;right:0;background:#123;color:#fff;padding:10px;display:flex;justify-content:space-between;align-items:center;z-index:4}
+.modal{position:fixed;inset:0;background:#0009;display:none;align-items:center;justify-content:center;padding:15px;z-index:9}
+.modal.on{display:flex}
+.modal .box{width:100%;max-width:380px;margin:0;max-height:90vh;overflow:auto}
+.anulada{opacity:.55}
+.anulada b{text-decoration:line-through}
 </style>
 </head>
 <body>
@@ -54,279 +59,406 @@ input,select{padding:8px;border:1px solid #bbb;border-radius:6px;font-size:15px;
 </nav>
 
 <main id="vista"></main>
-
 <div class="bar" id="bar"></div>
 <div class="modal" id="modal"><div class="box" id="modalBox"></div></div>
 
 <script>
-const KEY = 'cevicheria_ronald_v1';
-const CATS = ['Desayuno','Almuerzo','Cena','Bebidas'];
-const DEFAULT = {
-  clave: '1234',
-  carta: [
-    {id:1,cat:'Desayuno',name:'Empanada de pollo',price:6},
-    {id:2,cat:'Desayuno',name:'Sándwich de pollo',price:8},
-    {id:3,cat:'Desayuno',name:'Tamal',price:5},
-    {id:4,cat:'Desayuno',name:'Café con pan',price:4},
-    {id:5,cat:'Almuerzo',name:'Ceviche',price:25},
-    {id:6,cat:'Almuerzo',name:'Causa rellena',price:15},
-    {id:7,cat:'Almuerzo',name:'Pescado frito',price:22},
-    {id:8,cat:'Almuerzo',name:'Arroz con mariscos',price:28},
-    {id:9,cat:'Cena',name:'Hamburguesa',price:18},
-    {id:10,cat:'Cena',name:'Chicharrón de pescado',price:24},
-    {id:11,cat:'Cena',name:'Tiradito',price:22},
-    {id:12,cat:'Bebidas',name:'Gaseosa',price:4},
-    {id:13,cat:'Bebidas',name:'Agua',price:2},
-    {id:14,cat:'Bebidas',name:'Cerveza',price:8},
-    {id:15,cat:'Bebidas',name:'Jugo',price:5}
-  ],
-  pedidos: {},
-  historial: []
-};
+const KEY = 'cevicheria_ronald_v2';
+const CATS = {Desayuno:'#6b7280', Almuerzo:'#e08a3c', Cena:'#c0392b', Bebidas:'#2a9fd6'};
+const CATS_LIST = Object.keys(CATS);
+const CARTA_INICIAL = [
+  {id:1,cat:'Desayuno',name:'Empanada de pollo',price:6},
+  {id:2,cat:'Desayuno',name:'Sándwich de pollo',price:8},
+  {id:3,cat:'Desayuno',name:'Tamal',price:5},
+  {id:4,cat:'Desayuno',name:'Café con pan',price:4},
+  {id:5,cat:'Almuerzo',name:'Ceviche',price:25},
+  {id:6,cat:'Almuerzo',name:'Causa rellena',price:15},
+  {id:7,cat:'Almuerzo',name:'Pescado frito',price:22},
+  {id:8,cat:'Almuerzo',name:'Arroz con mariscos',price:28},
+  {id:9,cat:'Cena',name:'Hamburguesa',price:18},
+  {id:10,cat:'Cena',name:'Chicharrón de pescado',price:24},
+  {id:11,cat:'Cena',name:'Tiradito',price:22},
+  {id:12,cat:'Bebidas',name:'Gaseosa',price:4},
+  {id:13,cat:'Bebidas',name:'Agua',price:2},
+  {id:14,cat:'Bebidas',name:'Cerveza',price:8},
+  {id:15,cat:'Bebidas',name:'Jugo',price:5}
+];
 
-let S;
-try { S = JSON.parse(localStorage.getItem(KEY)) || JSON.parse(JSON.stringify(DEFAULT)); }
-catch(e) { S = JSON.parse(JSON.stringify(DEFAULT)); }
+let S = null;
+try { S = JSON.parse(localStorage.getItem(KEY)); } catch(e) { S = null; }
+if (!S) S = {clave:'1234', carta:JSON.parse(JSON.stringify(CARTA_INICIAL)), mozos:['Ronald','Mozo 1','Mozo 2'], pedidos:{}, historial:[], correl:0};
 
-let vista = 'carta';
-let cat = 'Desayuno';
-let editOk = false;
+let vista = 'carta', cat = 'Desayuno', editOk = false;
 let mesa = Number(new URLSearchParams(location.search).get('mesa')) || 1;
+let histDia = null, histMesa = 'todas';
 
-function save(){
-  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {}
-}
-function esc(s){
-  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
+/* ---------- utilidades ---------- */
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {} }
+function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function sol(n){ return 'S/ ' + Number(n || 0).toFixed(2); }
-function pedidoMesa(){ return S.pedidos[mesa] || {}; }
-function totalMesa(){
-  const p = pedidoMesa();
-  return S.carta.reduce((t, it) => t + (p[it.id] || 0) * it.price, 0);
+function pad(n){ return String(n).padStart(2,'0'); }
+function hoyKey(d = new Date()){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function fmtFecha(ts){ const d = new Date(ts); return pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear(); }
+function fmtHora(ts){ return ts ? new Date(ts).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}) : '--:--'; }
+histDia = hoyKey();
+
+/* ---------- cuenta de la mesa ---------- */
+function pedidoMesa(m = mesa){ return S.pedidos[m] || {items:{}, libres:[], apertura:null}; }
+function asegurarPedido(){
+  if (!S.pedidos[mesa]) S.pedidos[mesa] = {items:{}, libres:[], apertura:null};
+  if (!S.pedidos[mesa].apertura) S.pedidos[mesa].apertura = Date.now();
+  return S.pedidos[mesa];
+}
+function lineas(){
+  const p = pedidoMesa(), out = [];
+  S.carta.forEach(it => {
+    if (p.items[it.id]) out.push({tipo:'carta', key:it.id, name:it.name, cat:it.cat, price:it.price, qty:p.items[it.id]});
+  });
+  p.libres.forEach((l, i) => out.push({tipo:'libre', key:i, name:l.name, cat:'Libre', price:l.price, qty:1}));
+  return out.map(l => ({...l, sub: l.qty * l.price}));
+}
+function subtotal(){ return lineas().reduce((a, l) => a + l.sub, 0); }
+function platos(){ return lineas().reduce((a, l) => a + l.qty, 0); }
+function limpiarSiVacio(){
+  const p = S.pedidos[mesa];
+  if (p && !Object.keys(p.items).length && !p.libres.length) delete S.pedidos[mesa];
 }
 function cambiarQty(id, d){
-  const p = S.pedidos[mesa] || (S.pedidos[mesa] = {});
-  p[id] = Math.max(0, (p[id] || 0) + d);
-  if (!p[id]) delete p[id];
-  save(); render();
+  const p = asegurarPedido();
+  p.items[id] = Math.max(0, (p.items[id] || 0) + d);
+  if (!p.items[id]) delete p.items[id];
+  limpiarSiVacio(); save(); render();
 }
-function ir(v){
-  vista = v;
-  if (v === 'editar' && !editOk) {
-    const c = prompt('Clave del panel de edición:');
-    if (c === S.clave) editOk = true;
-    else { alert('Clave incorrecta'); vista = 'carta'; }
-  }
-  render();
+function quitarLinea(tipo, key){
+  showConfirm('¿Quitar este plato?', 'Sale de la cuenta de la mesa ' + mesa + '.', () => {
+    const p = S.pedidos[mesa];
+    if (p) {
+      if (tipo === 'carta') delete p.items[key];
+      else p.libres.splice(key, 1);
+    }
+    limpiarSiVacio(); save(); render();
+  });
 }
-function abrirModal(html){
-  document.getElementById('modalBox').innerHTML = html;
-  document.getElementById('modal').classList.add('on');
+function platoLibre(){
+  showModal(`<h3 style="margin-top:0">Plato libre · Mesa ${mesa}</h3>
+    <p class="muted">Para algo que no está en la carta. No se guarda en el menú.</p>
+    <label>Nombre</label><input id="lnom" placeholder="Porción de papas fritas">
+    <label>Precio (S/)</label><input id="lpre" type="number" min="0" step="0.5">
+    <div class="row"><button class="ok" style="flex:1" onclick="guardarLibre()">Agregar</button>
+    <button class="sec" style="flex:1" onclick="cerrarModal()">Cancelar</button></div>`);
 }
-function cerrarModal(){ document.getElementById('modal').classList.remove('on'); }
-
-function render(){
-  ['carta','cuenta','historial','editar'].forEach(v =>
-    document.getElementById('t-' + v).classList.toggle('on', v === vista));
-  const sel = document.getElementById('selMesa');
-  if (!sel.options.length) {
-    for (let i = 1; i <= 10; i++) sel.add(new Option('Mesa ' + i, i));
-  }
-  sel.value = mesa;
-
-  const v = document.getElementById('vista');
-  if (vista === 'carta') v.innerHTML = vistaCarta();
-  else if (vista === 'cuenta') v.innerHTML = vistaCuenta();
-  else if (vista === 'historial') v.innerHTML = vistaHistorial();
-  else if (vista === 'editar') v.innerHTML = vistaEditar();
-
-  const n = Object.values(pedidoMesa()).reduce((a, b) => a + b, 0);
-  document.getElementById('bar').innerHTML =
-    `<span>Mesa ${mesa} · ${n} platos · <b>${sol(totalMesa())}</b></span>
-     <button onclick="ir('cuenta')">Ver cuenta</button>`;
+function guardarLibre(){
+  const n = document.getElementById('lnom').value.trim();
+  const v = document.getElementById('lpre').value;
+  if (!n) { showMsg('Falta el nombre', 'Escribe qué plato es.'); return; }
+  if (v === '' || Number(v) < 0) { showMsg('Falta el precio', 'Escribe cuánto cuesta.'); return; }
+  asegurarPedido().libres.push({name:n, price:Number(v)});
+  save(); cerrarModal(); render();
 }
-
-function vistaCarta(){
-  const p = pedidoMesa();
-  const subnav = CATS.map(c =>
-    `<button class="${c === cat ? 'on' : 'sec'}" onclick="cat='${c}';render()">${c}</button>`).join(' ');
-  const items = S.carta.filter(it => it.cat === cat).map(it => `
-    <div class="card">
-      <div><b>${esc(it.name)}</b><div class="muted">${sol(it.price)}</div></div>
-      <div class="qty">
-        <button class="sec" onclick="cambiarQty(${it.id},-1)">−</button>
-        <b>${p[it.id] || 0}</b>
-        <button onclick="cambiarQty(${it.id},1)">+</button>
-      </div>
-    </div>`).join('');
-  return `<div class="box">${subnav}</div>${items || '<p class="muted">Sin platos en esta sección.</p>'}`;
+function moverMesa(v){
+  const dest = Number(v);
+  if (!dest || dest === mesa) return;
+  const ocupada = S.pedidos[dest] && (Object.keys(S.pedidos[dest].items).length || S.pedidos[dest].libres.length);
+  if (ocupada) { showMsg('Mesa ocupada', 'La mesa ' + dest + ' ya tiene una cuenta abierta.'); render(); return; }
+  if (S.pedidos[mesa]) { S.pedidos[dest] = S.pedidos[mesa]; delete S.pedidos[mesa]; }
+  mesa = dest; save(); render();
 }
 
-function lineasPedido(){
-  const p = pedidoMesa();
-  return S.carta.filter(it => p[it.id]).map(it => ({
-    id: it.id, name: it.name, price: it.price, qty: p[it.id], sub: p[it.id] * it.price
-  }));
+/* ---------- cobro ---------- */
+function aPagar(){
+  const sub = subtotal();
+  const el = document.getElementById('desc');
+  const d = Math.min(sub, Math.max(0, Number(el ? el.value : 0) || 0));
+  return {sub, d, total: sub - d};
 }
-
-function vistaCuenta(){
-  const lineas = lineasPedido();
-  if (!lineas.length) return `<div class="box"><b>Mesa ${mesa}</b><p class="muted">Todavía no hay platos en la cuenta.</p></div>`;
-  const filas = lineas.map(l => `
-    <div class="card"><span>${l.qty} x ${esc(l.name)}</span><b>${sol(l.sub)}</b></div>`).join('');
-  return `
-    <div class="box"><b>Mesa ${mesa}</b></div>
-    ${filas}
-    <div class="total">TOTAL: ${sol(totalMesa())}</div>
-    <div class="row">
-      <button class="sec" style="flex:1" onclick="enviarCocina()">Enviar a cocina</button>
-      <button style="flex:1" onclick="cobrar()">Cobrar</button>
-    </div>`;
+function recalc(){
+  const x = aPagar();
+  const ap = document.getElementById('aPagar');
+  if (!ap) return;
+  ap.textContent = sol(x.total);
+  const ef = document.getElementById('metodo').value === 'Efectivo';
+  document.getElementById('bloqEf').style.display = ef ? 'block' : 'none';
+  const pago = Number(document.getElementById('pago').value) || 0;
+  document.getElementById('vuelto').textContent = sol(Math.max(0, pago - x.total));
 }
-
-function textoCocina(){
-  const lineas = lineasPedido().map(l => `${l.qty} x ${l.name}  ${sol(l.sub)}`).join('\n');
-  return `CEVICHERÍA RONALD - Mesa ${mesa}\n${lineas}\nTOTAL: ${sol(totalMesa())}`;
-}
-function enviarCocina(){
-  const txt = textoCocina();
-  abrirModal(`
-    <h3 style="margin-top:0">Pedido para cocina</h3>
-    <textarea rows="8" style="width:100%" readonly>${esc(txt)}</textarea>
-    <div class="row">
-      <button style="flex:1" onclick="copiarTexto()">Copiar</button>
-      <button class="sec" style="flex:1" onclick="cerrarModal()">Cerrar</button>
-    </div>`);
-}
-function copiarTexto(){
-  const t = document.querySelector('#modalBox textarea');
-  t.select();
-  try { document.execCommand('copy'); alert('Pedido copiado. Pégalo en WhatsApp.'); }
-  catch(e) { alert('Selecciónalo y cópialo a mano.'); }
-}
-
 function cobrar(){
-  const total = totalMesa();
-  abrirModal(`
-    <h3 style="margin-top:0">Cobrar Mesa ${mesa}</h3>
-    <div class="total">${sol(total)}</div>
+  if (!subtotal()) return;
+  showModal(`<h3 style="margin-top:0">Cobrar · Mesa ${mesa}</h3>
+    <div class="sp"><span>Subtotal</span><b>${sol(subtotal())}</b></div>
+    <label>Descuento (S/, opcional)</label>
+    <input id="desc" type="number" min="0" step="0.5" value="0" oninput="recalc()">
+    <div class="sp"><span>A pagar</span><b id="aPagar">${sol(subtotal())}</b></div>
     <label>Método de pago</label>
-    <select id="metodo" onchange="document.getElementById('bloqEf').style.display=this.value==='Efectivo'?'block':'none'">
-      <option>Efectivo</option>
-      <option>Yape</option>
-    </select>
+    <select id="metodo" onchange="recalc()"><option>Efectivo</option><option>Yape</option></select>
     <div id="bloqEf">
       <label>¿Con cuánto paga?</label>
-      <input id="pago" type="number" min="0" step="0.5" oninput="calcVuelto(${total})">
-      <div class="total" id="vuelto" style="font-size:16px">Vuelto: S/ 0.00</div>
+      <input id="pago" type="number" min="0" step="0.5" oninput="recalc()">
+      <div class="muted" style="text-align:center">Vuelto a dar</div>
+      <div class="big" id="vuelto">S/ 0.00</div>
     </div>
-    <div class="row">
-      <button style="flex:1" onclick="confirmarCobro(${total})">Confirmar cobro</button>
+    <label>Propina (S/, opcional, solo se anota)</label>
+    <input id="prop" type="number" min="0" step="0.5" value="0">
+    <label>Atendió</label>
+    <select id="mozo">${S.mozos.map(m => `<option>${esc(m)}</option>`).join('')}</select>
+    <div class="row" style="margin-top:8px">
+      <button class="ok" style="flex:1" onclick="confirmarCobro()">Confirmar</button>
       <button class="sec" style="flex:1" onclick="cerrarModal()">Cancelar</button>
     </div>`);
+  recalc();
 }
-function calcVuelto(total){
-  const pago = Number(document.getElementById('pago').value) || 0;
-  const v = Math.max(0, pago - total);
-  document.getElementById('vuelto').textContent = 'Vuelto: ' + sol(v);
-}
-function confirmarCobro(total){
-  const metodo = document.getElementById('metodo').value;
-  let pago = total, vuelto = 0;
-  if (metodo === 'Efectivo') {
-    pago = Number(document.getElementById('pago').value) || 0;
-    if (pago < total) { alert('El monto recibido es menor que la cuenta.'); return; }
-    vuelto = pago - total;
-  }
+function confirmarCobro(){
+  const x = aPagar();
+  const ef = document.getElementById('metodo').value === 'Efectivo';
+  const pago = ef ? (Number(document.getElementById('pago').value) || 0) : x.total;
+  if (ef && pago < x.total) { showMsg('Pago insuficiente', 'El cliente paga menos de lo que debe.'); return; }
+  const prop = Math.max(0, Number(document.getElementById('prop').value) || 0);
+  const p = pedidoMesa();
+  const items = lineas().map(l => ({name:l.name, cat:l.cat, qty:l.qty, price:l.price, sub:l.sub}));
+  S.correl++;
   S.historial.push({
-    dia: new Date().toDateString(),
-    hora: new Date().toLocaleTimeString('es-PE', {hour:'2-digit', minute:'2-digit'}),
-    mesa, metodo, total, pago, vuelto,
-    items: lineasPedido().map(l => ({name: l.name, qty: l.qty}))
+    n: S.correl, dia: hoyKey(), apertura: p.apertura || Date.now(), cobro: Date.now(),
+    mesa, mozo: document.getElementById('mozo').value,
+    metodo: ef ? 'Efectivo' : 'Yape',
+    subtotal: x.sub, descuento: x.d, total: x.total,
+    pago, vuelto: ef ? pago - x.total : 0, propina: prop,
+    anulada: false, items
   });
   delete S.pedidos[mesa];
   save();
-  cerrarModal();
-  alert(`Cobrado. ${metodo}. Vuelto: ${sol(vuelto)}`);
+  const v = S.historial[S.historial.length - 1];
+  showModal(`<h3 style="margin-top:0">Cobrado · ticket #${v.n}</h3>
+    <p class="muted" style="text-align:center">${ef ? 'Vuelto a dar:' : 'Pago con Yape, sin vuelto.'}</p>
+    ${ef ? `<div class="big">${sol(v.vuelto)}</div>` : ''}
+    <button class="ok" style="width:100%" onclick="cerrarModal()">Listo</button>`);
   vista = 'carta';
   render();
 }
 
-function vistaHistorial(){
-  const hoy = new Date().toDateString();
-  const ventas = S.historial.filter(h => h.dia === hoy);
-  const totalDia = ventas.reduce((a, h) => a + h.total, 0);
-  const conteo = {};
-  ventas.forEach(h => h.items.forEach(i => conteo[i.name] = (conteo[i.name] || 0) + i.qty));
-  const platos = Object.values(conteo).reduce((a, b) => a + b, 0);
-  const ranking = Object.entries(conteo).sort((a, b) => b[1] - a[1])
-    .map(([n, q]) => `<div class="row" style="justify-content:space-between"><span>${esc(n)}</span><b>${q}</b></div>`).join('')
-    || '<p class="muted">Aún no hay ventas hoy.</p>';
-  const lista = ventas.slice().reverse().map(h => `
-    <div class="card"><span>${h.hora} · Mesa ${h.mesa} · ${h.metodo}</span><b>${sol(h.total)}</b></div>`).join('');
-  return `
-    <div class="box">
-      <b>Resumen de hoy</b>
-      <div class="row" style="justify-content:space-between"><span>Cuentas cobradas</span><b>${ventas.length}</b></div>
-      <div class="row" style="justify-content:space-between"><span>Platos vendidos</span><b>${platos}</b></div>
-      <div class="row" style="justify-content:space-between"><span>Total vendido</span><b>${sol(totalDia)}</b></div>
-    </div>
-    <div class="box"><b>Platos vendidos hoy</b>${ranking}</div>
-    <b>Cuentas de hoy</b>${lista || '<p class="muted">Sin cuentas cobradas hoy.</p>'}
-    <div style="margin-top:12px"><button class="red" onclick="borrarHistorial()">Borrar historial</button></div>`;
+/* ---------- avisos propios ---------- */
+function showModal(html){
+  document.getElementById('modalBox').innerHTML = html;
+  document.getElementById('modal').classList.add('on');
 }
-function borrarHistorial(){
-  if (!confirm('¿Borrar todo el historial?')) return;
-  S.historial = []; save(); render();
+function cerrarModal(){ document.getElementById('modal').classList.remove('on'); }
+function showMsg(t, txt){
+  showModal(`<h3 style="margin-top:0">${esc(t)}</h3><p>${esc(txt)}</p>
+    <button style="width:100%" onclick="cerrarModal()">OK</button>`);
+}
+function showConfirm(t, txt, fn){
+  window.__cb = fn;
+  showModal(`<h3 style="margin-top:0">${esc(t)}</h3><p>${esc(txt)}</p>
+    <div class="row"><button class="red" style="flex:1" onclick="ejecutarCb()">Sí</button>
+    <button class="sec" style="flex:1" onclick="cerrarModal()">Cancelar</button></div>`);
+}
+function ejecutarCb(){
+  const f = window.__cb; window.__cb = null;
+  cerrarModal();
+  if (f) f();
 }
 
-function vistaEditar(){
-  const filas = S.carta.map(it => `
-    <div class="box">
-      <input value="${esc(it.name)}" onchange="editItem(${it.id},'name',this.value)" placeholder="Nombre">
-      <div class="row">
-        <select onchange="editItem(${it.id},'cat',this.value)">
-          ${CATS.map(c => `<option ${c === it.cat ? 'selected' : ''}>${c}</option>`).join('')}
-        </select>
-        <input type="number" min="0" step="0.5" value="${it.price}" onchange="editItem(${it.id},'price',this.value)">
-        <button class="red" onclick="borrarItem(${it.id})">✕</button>
+/* ---------- enviar a cocina ---------- */
+function enviarCocina(){
+  const txt = `CEVICHERÍA RONALD - Mesa ${mesa}\n` +
+    lineas().map(l => `${l.qty} x ${l.name}  ${sol(l.sub)}`).join('\n') +
+    `\nTOTAL: ${sol(subtotal())}`;
+  showModal(`<h3 style="margin-top:0">Pedido para cocina</h3>
+    <textarea id="txtc" rows="8" readonly>${esc(txt)}</textarea>
+    <div class="row"><button class="ok" style="flex:1" onclick="copiarTxt()">Copiar</button>
+    <button class="sec" style="flex:1" onclick="cerrarModal()">Cerrar</button></div>`);
+}
+function copiarTxt(){
+  const t = document.getElementById('txtc');
+  t.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch(e) {}
+  showMsg(ok ? 'Copiado' : 'No se pudo copiar', ok ? 'Pégalo en WhatsApp.' : 'Selecciónalo y cópialo a mano.');
+}
+
+/* ---------- historial ---------- */
+function anularVenta(n){
+  const v = S.historial.find(x => x.n === n);
+  if (!v) return;
+  showConfirm('¿Anular la cuenta #' + n + '?', 'Sale del total del día, pero queda marcada como anulada para que se vea.', () => {
+    v.anulada = true; save(); render();
+  });
+}
+function borrarHistorial(){
+  showConfirm('¿Borrar todo el historial?', 'Se borran todas las cuentas guardadas. No se puede deshacer.', () => {
+    S.historial = []; save(); render();
+  });
+}
+function vistaHistorial(){
+  const ventas = S.historial
+    .filter(v => v.dia === histDia && (histMesa === 'todas' || v.mesa === Number(histMesa)))
+    .sort((a, b) => b.n - a.n);
+  const validas = ventas.filter(v => !v.anulada);
+  const total = validas.reduce((a, v) => a + v.total, 0);
+  const plat = validas.reduce((a, v) => a + v.items.reduce((b, i) => b + i.qty, 0), 0);
+  const prop = validas.reduce((a, v) => a + (v.propina || 0), 0);
+  const conteo = {};
+  validas.forEach(v => v.items.forEach(i => conteo[i.name] = (conteo[i.name] || 0) + i.qty));
+  const rank = Object.entries(conteo).sort((a, b) => b[1] - a[1])
+    .map(([n, q]) => `<div class="sp"><span>${esc(n)}</span><b>${q}</b></div>`).join('')
+    || '<p class="muted">Sin ventas en este filtro.</p>';
+  const opcMesa = ['<option value="todas">Todas las mesas</option>']
+    .concat(Array.from({length:10}, (_, i) => `<option value="${i+1}" ${String(i+1) === histMesa ? 'selected' : ''}>Mesa ${i+1}</option>`))
+    .join('');
+  const lista = ventas.map(v => `
+    <div class="card ${v.anulada ? 'anulada' : ''}" style="--c:${v.anulada ? '#999' : '#2e8b57'};display:block">
+      <div class="sp"><b>#${v.n} · Mesa ${v.mesa}</b>${v.anulada ? '<span class="badge">ANULADA</span>' : ''}</div>
+      <div class="muted">${esc(v.mozo)} · ${v.metodo} · ${fmtFecha(v.cobro)}</div>
+      <div class="muted">Abrió ${fmtHora(v.apertura)} · Cobró ${fmtHora(v.cobro)}</div>
+      <div style="margin-top:6px">
+        ${v.items.map(i => `<div class="sp" style="font-size:14px"><span>${i.qty} x ${esc(i.name)}${i.cat === 'Libre' ? ' <span class="muted">(libre)</span>' : ''}</span><span>${sol(i.sub)}</span></div>`).join('')}
       </div>
+      <div class="sp"><span>Subtotal</span><span>${sol(v.subtotal)}</span></div>
+      ${v.descuento ? `<div class="sp"><span>Descuento</span><span>- ${sol(v.descuento)}</span></div>` : ''}
+      <div class="sp"><b>Total</b><b>${sol(v.total)}</b></div>
+      ${v.metodo === 'Efectivo' ? `<div class="muted">Pagó ${sol(v.pago)} · Vuelto ${sol(v.vuelto)}</div>` : ''}
+      ${v.propina ? `<div class="muted">Propina ${sol(v.propina)}</div>` : ''}
+      ${v.anulada ? '' : `<button class="red" style="margin-top:6px" onclick="anularVenta(${v.n})">Anular</button>`}
     </div>`).join('');
   return `
-    <div class="box">
-      <button onclick="agregarItem()" style="width:100%">+ Agregar plato</button>
+    <div class="box"><div class="row">
+      <div style="flex:1"><div class="muted">Día</div><input type="date" value="${histDia}" onchange="histDia=this.value;render()"></div>
+      <div style="flex:1"><div class="muted">Mesa</div><select onchange="histMesa=this.value;render()">${opcMesa}</select></div>
+    </div></div>
+    <div class="box"><b>Resumen</b>
+      <div class="sp"><span>Cuentas cobradas</span><b>${validas.length}</b></div>
+      <div class="sp"><span>Platos vendidos</span><b>${plat}</b></div>
+      <div class="sp"><span>Total vendido</span><b>${sol(total)}</b></div>
+      <div class="sp"><span>Propinas</span><b>${sol(prop)}</b></div>
     </div>
+    <div class="box"><b>Platos vendidos</b>${rank}</div>
+    <b>Cuentas</b>
+    ${lista || '<p class="muted">Sin cuentas en este filtro.</p>'}
+    <div style="margin-top:12px"><button class="red" onclick="borrarHistorial()">Borrar historial</button></div>`;
+}
+
+/* ---------- carta y cuenta ---------- */
+function vistaCarta(){
+  const p = pedidoMesa();
+  const tabs = CATS_LIST.map(c =>
+    `<button style="background:${cat === c ? CATS[c] : '#dde3e8'};color:${cat === c ? '#fff' : '#123'}" onclick="cat='${c}';render()">${c}</button>`).join(' ');
+  const items = S.carta.filter(it => it.cat === cat).map(it => `
+    <div class="card" style="--c:${CATS[it.cat]}">
+      <div><b>${esc(it.name)}</b><div class="muted">${sol(it.price)}</div></div>
+      <div class="qty">
+        <button class="sec" onclick="cambiarQty(${it.id},-1)">−</button>
+        <b>${p.items[it.id] || 0}</b>
+        <button onclick="cambiarQty(${it.id},1)">+</button>
+      </div>
+    </div>`).join('');
+  return `<div class="box">${tabs}</div>${items}`;
+}
+function vistaCuenta(){
+  const ls = lineas();
+  if (!ls.length) return `<div class="box"><b>Mesa ${mesa}</b><p class="muted">Todavía no hay platos en la cuenta.</p></div>`;
+  const filas = ls.map(l => `
+    <div class="card" style="--c:${CATS[l.cat] || '#999'}">
+      <div><b>${esc(l.name)}</b><div class="muted">${l.qty} x ${sol(l.price)} <span class="badge">${l.cat}</span></div></div>
+      <div class="row"><b>${sol(l.sub)}</b><button class="sec" onclick="quitarLinea('${l.tipo}',${l.key})">Quitar</button></div>
+    </div>`).join('');
+  return `
+    <div class="box"><b>Mesa ${mesa}</b> <span class="muted">· abierta ${fmtHora(pedidoMesa().apertura)}</span></div>
     ${filas}
-    <div class="box">
-      <b>Cambiar clave</b>
+    <div class="total">TOTAL: ${sol(subtotal())}</div>
+    <div class="row"><button class="sec" style="flex:1" onclick="platoLibre()">+ Plato libre</button></div>
+    <div class="row" style="margin-top:8px">
+      <button class="sec" style="flex:1" onclick="enviarCocina()">Enviar a cocina</button>
+      <button class="ok" style="flex:1" onclick="cobrar()">Cobrar</button>
+    </div>
+    <div class="box" style="margin-top:12px"><div class="muted">Pasar esta cuenta a otra mesa</div>
+      <select onchange="moverMesa(this.value)"><option value="">Elegir mesa…</option>
+        ${Array.from({length:10}, (_, i) => i + 1).filter(m => m !== mesa).map(m => `<option value="${m}">Mesa ${m}</option>`).join('')}
+      </select></div>`;
+}
+
+/* ---------- edición ---------- */
+function pedirClave(){
+  showModal(`<h3 style="margin-top:0">Clave</h3>
+    <input id="cl" type="password" placeholder="Clave">
+    <div class="row"><button class="ok" style="flex:1" onclick="checkClave()">Entrar</button>
+    <button class="sec" style="flex:1" onclick="cerrarModal()">Cancelar</button></div>`);
+  setTimeout(() => { const e = document.getElementById('cl'); if (e) e.focus(); }, 50);
+}
+function checkClave(){
+  if (document.getElementById('cl').value === S.clave) { editOk = true; cerrarModal(); render(); }
+  else showMsg('Clave incorrecta', 'Inténtalo de nuevo.');
+}
+function vistaEditar(){
+  if (!editOk) return `<div class="box"><b>Editar carta</b><p class="muted">Pide la clave para entrar.</p>
+    <button onclick="pedirClave()" style="width:100%">Escribir clave</button></div>`;
+  const filas = S.carta.map(it => `
+    <div class="card" style="--c:${CATS[it.cat]};display:block">
+      <input value="${esc(it.name)}" onchange="editItem(${it.id},'name',this.value)">
+      <div class="row">
+        <select style="flex:1" onchange="editItem(${it.id},'cat',this.value)">
+          ${CATS_LIST.map(c => `<option ${c === it.cat ? 'selected' : ''}>${c}</option>`).join('')}
+        </select>
+        <div class="row" style="flex:1"><b>S/</b>
+          <input type="number" min="0" step="0.5" value="${it.price}" onchange="editItem(${it.id},'price',this.value)">
+        </div>
+        <button class="red" onclick="quitarItemCarta(${it.id})">✕</button>
+      </div>
+    </div>`).join('');
+  const mozos = S.mozos.map((m, i) => `<div class="sp"><span>${esc(m)}</span><button class="red" onclick="quitarMozo(${i})">Quitar</button></div>`).join('');
+  return `
+    <div class="box"><button class="ok" style="width:100%" onclick="agregarItem()">+ Agregar plato en ${cat}</button></div>
+    ${filas}
+    <div class="box"><b>Mozos</b>${mozos}
+      <div class="row"><input id="nuevoMozo" placeholder="Nombre del mozo"><button onclick="agregarMozo()">Agregar</button></div></div>
+    <div class="box"><b>Cambiar clave</b>
       <input id="nuevaClave" type="password" placeholder="Nueva clave">
-      <button class="sec" onclick="cambiarClave()">Guardar clave</button>
-    </div>`;
+      <button class="sec" onclick="cambiarClave()">Guardar clave</button></div>`;
 }
 function editItem(id, campo, valor){
   const it = S.carta.find(x => x.id === id);
   if (!it) return;
-  it[campo] = campo === 'price' ? Number(valor) || 0 : valor;
+  it[campo] = campo === 'price' ? (Number(valor) || 0) : valor;
   save(); render();
 }
-function borrarItem(id){
-  if (!confirm('¿Quitar este plato de la carta?')) return;
-  S.carta = S.carta.filter(x => x.id !== id);
-  Object.values(S.pedidos).forEach(p => delete p[id]);
-  save(); render();
+function quitarItemCarta(id){
+  showConfirm('¿Quitar este plato de la carta?', 'Sale del menú. Las cuentas ya cobradas no cambian.', () => {
+    S.carta = S.carta.filter(x => x.id !== id);
+    Object.values(S.pedidos).forEach(p => delete p.items[id]);
+    save(); render();
+  });
 }
 function agregarItem(){
-  const id = Date.now();
-  S.carta.push({id, cat, name: 'Nuevo plato', price: 0});
+  S.carta.push({id: Date.now(), cat: cat, name: 'Nuevo plato', price: 0});
   save(); render();
+}
+function agregarMozo(){
+  const n = document.getElementById('nuevoMozo').value.trim();
+  if (!n) { showMsg('Falta el nombre', 'Escribe el nombre del mozo.'); return; }
+  S.mozos.push(n); save(); render();
+}
+function quitarMozo(i){
+  showConfirm('¿Quitar a ' + S.mozos[i] + '?', 'Ya no aparecerá al cobrar. Las ventas anteriores no cambian.', () => {
+    S.mozos.splice(i, 1); save(); render();
+  });
 }
 function cambiarClave(){
   const c = document.getElementById('nuevaClave').value.trim();
-  if (!c) { alert('Escribe una clave.'); return; }
-  S.clave = c; save(); alert('Clave cambiada.');
+  if (!c) { showMsg('Falta la clave', 'Escribe una clave nueva.'); return; }
+  S.clave = c; save(); showMsg('Listo', 'Clave cambiada.');
 }
 
+/* ---------- navegación ---------- */
+function ir(v){ vista = v; render(); }
+function render(){
+  ['carta','cuenta','historial','editar'].forEach(v =>
+    document.getElementById('t-' + v).classList.toggle('on', v === vista));
+  const sel = document.getElementById('selMesa');
+  if (!sel.options.length) for (let i = 1; i <= 10; i++) sel.add(new Option('Mesa ' + i, i));
+  sel.value = mesa;
+  const f = {carta: vistaCarta, cuenta: vistaCuenta, historial: vistaHistorial, editar: vistaEditar}[vista];
+  document.getElementById('vista').innerHTML = f();
+  document.getElementById('bar').innerHTML =
+    `<span>Mesa ${mesa} · ${platos()} platos · <b>${sol(subtotal())}</b></span>
+     <button onclick="ir('cuenta')">Ver cuenta</button>`;
+}
 render();
 </script>
 </body>
