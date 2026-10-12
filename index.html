@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cevichería Ronald</title>
+<style>
+*{box-sizing:border-box}
+body{font-family:system-ui,sans-serif;margin:0;background:#eef8fb;color:#123;padding-bottom:70px}
+header{background:linear-gradient(90deg,#0c7c9c,#17a2b8);color:#fff;padding:12px;display:flex;align-items:center;gap:10px}
+header h1{font-size:20px;margin:0}
+header svg{width:44px;height:44px;flex-shrink:0}
+nav{display:flex;flex-wrap:wrap;gap:6px;padding:10px;background:#fff;position:sticky;top:0;z-index:5;align-items:center}
+nav select{padding:7px;border-radius:6px;border:1px solid #bbb;font-size:15px}
+button{border:0;border-radius:8px;padding:8px 12px;background:#0c7c9c;color:#fff;font-size:15px;cursor:pointer}
+button.sec{background:#dde3e8;color:#123}
+button.on{background:#f5a623;color:#123}
+button.red{background:#c0392b}
+button:disabled{opacity:.4}
+main{padding:10px}
+.card{background:#fff;border-radius:10px;padding:10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:8px;box-shadow:0 1px 3px #0002}
+.qty{display:flex;align-items:center;gap:8px}
+.qty button{padding:4px 11px}
+.box{background:#fff;border-radius:10px;padding:12px;margin-bottom:10px;box-shadow:0 1px 3px #0002}
+input,select{padding:8px;border:1px solid #bbb;border-radius:6px;font-size:15px;width:100%;margin:4px 0}
+.total{font-size:20px;font-weight:bold;text-align:right;margin:10px 0}
+.bar{position:fixed;bottom:0;left:0;right:0;background:#123;color:#fff;padding:10px;display:flex;justify-content:space-between;align-items:center}
+.modal{position:fixed;inset:0;background:#0009;display:none;align-items:center;justify-content:center;padding:15px;z-index:9}
+.modal.on{display:flex}
+.modal .box{width:100%;max-width:380px}
+.muted{color:#678;font-size:13px}
+.row{display:flex;gap:6px;align-items:center}
+</style>
+</head>
+<body>
+
+<header>
+  <svg viewBox="0 0 64 64" aria-hidden="true">
+    <ellipse cx="30" cy="32" rx="20" ry="12" fill="#f5a623"/>
+    <polygon points="48,32 60,22 60,42" fill="#f5a623"/>
+    <circle cx="20" cy="29" r="3" fill="#123"/>
+    <path d="M14 36 Q22 42 30 36" stroke="#fff" stroke-width="2" fill="none"/>
+    <path d="M30 20 Q34 12 40 14" stroke="#fff" stroke-width="2" fill="none"/>
+  </svg>
+  <h1>Cevichería Ronald</h1>
+</header>
+
+<nav>
+  <button id="t-carta" onclick="ir('carta')">Carta</button>
+  <button id="t-cuenta" onclick="ir('cuenta')">Cuenta</button>
+  <button id="t-historial" onclick="ir('historial')">Historial</button>
+  <button id="t-editar" onclick="ir('editar')">Editar carta</button>
+  <select id="selMesa" onchange="mesa=+this.value;render()"></select>
+</nav>
+
+<main id="vista"></main>
+
+<div class="bar" id="bar"></div>
+<div class="modal" id="modal"><div class="box" id="modalBox"></div></div>
+
+<script>
+const KEY = 'cevicheria_ronald_v1';
+const CATS = ['Desayuno','Almuerzo','Cena','Bebidas'];
+const DEFAULT = {
+  clave: '1234',
+  carta: [
+    {id:1,cat:'Desayuno',name:'Empanada de pollo',price:6},
+    {id:2,cat:'Desayuno',name:'Sándwich de pollo',price:8},
+    {id:3,cat:'Desayuno',name:'Tamal',price:5},
+    {id:4,cat:'Desayuno',name:'Café con pan',price:4},
+    {id:5,cat:'Almuerzo',name:'Ceviche',price:25},
+    {id:6,cat:'Almuerzo',name:'Causa rellena',price:15},
+    {id:7,cat:'Almuerzo',name:'Pescado frito',price:22},
+    {id:8,cat:'Almuerzo',name:'Arroz con mariscos',price:28},
+    {id:9,cat:'Cena',name:'Hamburguesa',price:18},
+    {id:10,cat:'Cena',name:'Chicharrón de pescado',price:24},
+    {id:11,cat:'Cena',name:'Tiradito',price:22},
+    {id:12,cat:'Bebidas',name:'Gaseosa',price:4},
+    {id:13,cat:'Bebidas',name:'Agua',price:2},
+    {id:14,cat:'Bebidas',name:'Cerveza',price:8},
+    {id:15,cat:'Bebidas',name:'Jugo',price:5}
+  ],
+  pedidos: {},
+  historial: []
+};
+
+let S;
+try { S = JSON.parse(localStorage.getItem(KEY)) || JSON.parse(JSON.stringify(DEFAULT)); }
+catch(e) { S = JSON.parse(JSON.stringify(DEFAULT)); }
+
+let vista = 'carta';
+let cat = 'Desayuno';
+let editOk = false;
+let mesa = Number(new URLSearchParams(location.search).get('mesa')) || 1;
+
+function save(){
+  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {}
+}
+function esc(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function sol(n){ return 'S/ ' + Number(n || 0).toFixed(2); }
+function pedidoMesa(){ return S.pedidos[mesa] || {}; }
+function totalMesa(){
+  const p = pedidoMesa();
+  return S.carta.reduce((t, it) => t + (p[it.id] || 0) * it.price, 0);
+}
+function cambiarQty(id, d){
+  const p = S.pedidos[mesa] || (S.pedidos[mesa] = {});
+  p[id] = Math.max(0, (p[id] || 0) + d);
+  if (!p[id]) delete p[id];
+  save(); render();
+}
+function ir(v){
+  vista = v;
+  if (v === 'editar' && !editOk) {
+    const c = prompt('Clave del panel de edición:');
+    if (c === S.clave) editOk = true;
+    else { alert('Clave incorrecta'); vista = 'carta'; }
+  }
+  render();
+}
+function abrirModal(html){
+  document.getElementById('modalBox').innerHTML = html;
+  document.getElementById('modal').classList.add('on');
+}
+function cerrarModal(){ document.getElementById('modal').classList.remove('on'); }
+
+function render(){
+  ['carta','cuenta','historial','editar'].forEach(v =>
+    document.getElementById('t-' + v).classList.toggle('on', v === vista));
+  const sel = document.getElementById('selMesa');
+  if (!sel.options.length) {
+    for (let i = 1; i <= 10; i++) sel.add(new Option('Mesa ' + i, i));
+  }
+  sel.value = mesa;
+
+  const v = document.getElementById('vista');
+  if (vista === 'carta') v.innerHTML = vistaCarta();
+  else if (vista === 'cuenta') v.innerHTML = vistaCuenta();
+  else if (vista === 'historial') v.innerHTML = vistaHistorial();
+  else if (vista === 'editar') v.innerHTML = vistaEditar();
+
+  const n = Object.values(pedidoMesa()).reduce((a, b) => a + b, 0);
+  document.getElementById('bar').innerHTML =
+    `<span>Mesa ${mesa} · ${n} platos · <b>${sol(totalMesa())}</b></span>
+     <button onclick="ir('cuenta')">Ver cuenta</button>`;
+}
+
+function vistaCarta(){
+  const p = pedidoMesa();
+  const subnav = CATS.map(c =>
+    `<button class="${c === cat ? 'on' : 'sec'}" onclick="cat='${c}';render()">${c}</button>`).join(' ');
+  const items = S.carta.filter(it => it.cat === cat).map(it => `
+    <div class="card">
+      <div><b>${esc(it.name)}</b><div class="muted">${sol(it.price)}</div></div>
+      <div class="qty">
+        <button class="sec" onclick="cambiarQty(${it.id},-1)">−</button>
+        <b>${p[it.id] || 0}</b>
+        <button onclick="cambiarQty(${it.id},1)">+</button>
+      </div>
+    </div>`).join('');
+  return `<div class="box">${subnav}</div>${items || '<p class="muted">Sin platos en esta sección.</p>'}`;
+}
+
+function lineasPedido(){
+  const p = pedidoMesa();
+  return S.carta.filter(it => p[it.id]).map(it => ({
+    id: it.id, name: it.name, price: it.price, qty: p[it.id], sub: p[it.id] * it.price
+  }));
+}
+
+function vistaCuenta(){
+  const lineas = lineasPedido();
+  if (!lineas.length) return `<div class="box"><b>Mesa ${mesa}</b><p class="muted">Todavía no hay platos en la cuenta.</p></div>`;
+  const filas = lineas.map(l => `
+    <div class="card"><span>${l.qty} x ${esc(l.name)}</span><b>${sol(l.sub)}</b></div>`).join('');
+  return `
+    <div class="box"><b>Mesa ${mesa}</b></div>
+    ${filas}
+    <div class="total">TOTAL: ${sol(totalMesa())}</div>
+    <div class="row">
+      <button class="sec" style="flex:1" onclick="enviarCocina()">Enviar a cocina</button>
+      <button style="flex:1" onclick="cobrar()">Cobrar</button>
+    </div>`;
+}
+
+function textoCocina(){
+  const lineas = lineasPedido().map(l => `${l.qty} x ${l.name}  ${sol(l.sub)}`).join('\n');
+  return `CEVICHERÍA RONALD - Mesa ${mesa}\n${lineas}\nTOTAL: ${sol(totalMesa())}`;
+}
+function enviarCocina(){
+  const txt = textoCocina();
+  abrirModal(`
+    <h3 style="margin-top:0">Pedido para cocina</h3>
+    <textarea rows="8" style="width:100%" readonly>${esc(txt)}</textarea>
+    <div class="row">
+      <button style="flex:1" onclick="copiarTexto()">Copiar</button>
+      <button class="sec" style="flex:1" onclick="cerrarModal()">Cerrar</button>
+    </div>`);
+}
+function copiarTexto(){
+  const t = document.querySelector('#modalBox textarea');
+  t.select();
+  try { document.execCommand('copy'); alert('Pedido copiado. Pégalo en WhatsApp.'); }
+  catch(e) { alert('Selecciónalo y cópialo a mano.'); }
+}
+
+function cobrar(){
+  const total = totalMesa();
+  abrirModal(`
+    <h3 style="margin-top:0">Cobrar Mesa ${mesa}</h3>
+    <div class="total">${sol(total)}</div>
+    <label>Método de pago</label>
+    <select id="metodo" onchange="document.getElementById('bloqEf').style.display=this.value==='Efectivo'?'block':'none'">
+      <option>Efectivo</option>
+      <option>Yape</option>
+    </select>
+    <div id="bloqEf">
+      <label>¿Con cuánto paga?</label>
+      <input id="pago" type="number" min="0" step="0.5" oninput="calcVuelto(${total})">
+      <div class="total" id="vuelto" style="font-size:16px">Vuelto: S/ 0.00</div>
+    </div>
+    <div class="row">
+      <button style="flex:1" onclick="confirmarCobro(${total})">Confirmar cobro</button>
+      <button class="sec" style="flex:1" onclick="cerrarModal()">Cancelar</button>
+    </div>`);
+}
+function calcVuelto(total){
+  const pago = Number(document.getElementById('pago').value) || 0;
+  const v = Math.max(0, pago - total);
+  document.getElementById('vuelto').textContent = 'Vuelto: ' + sol(v);
+}
+function confirmarCobro(total){
+  const metodo = document.getElementById('metodo').value;
+  let pago = total, vuelto = 0;
+  if (metodo === 'Efectivo') {
+    pago = Number(document.getElementById('pago').value) || 0;
+    if (pago < total) { alert('El monto recibido es menor que la cuenta.'); return; }
+    vuelto = pago - total;
+  }
+  S.historial.push({
+    dia: new Date().toDateString(),
+    hora: new Date().toLocaleTimeString('es-PE', {hour:'2-digit', minute:'2-digit'}),
+    mesa, metodo, total, pago, vuelto,
+    items: lineasPedido().map(l => ({name: l.name, qty: l.qty}))
+  });
+  delete S.pedidos[mesa];
+  save();
+  cerrarModal();
+  alert(`Cobrado. ${metodo}. Vuelto: ${sol(vuelto)}`);
+  vista = 'carta';
+  render();
+}
+
+function vistaHistorial(){
+  const hoy = new Date().toDateString();
+  const ventas = S.historial.filter(h => h.dia === hoy);
+  const totalDia = ventas.reduce((a, h) => a + h.total, 0);
+  const conteo = {};
+  ventas.forEach(h => h.items.forEach(i => conteo[i.name] = (conteo[i.name] || 0) + i.qty));
+  const platos = Object.values(conteo).reduce((a, b) => a + b, 0);
+  const ranking = Object.entries(conteo).sort((a, b) => b[1] - a[1])
+    .map(([n, q]) => `<div class="row" style="justify-content:space-between"><span>${esc(n)}</span><b>${q}</b></div>`).join('')
+    || '<p class="muted">Aún no hay ventas hoy.</p>';
+  const lista = ventas.slice().reverse().map(h => `
+    <div class="card"><span>${h.hora} · Mesa ${h.mesa} · ${h.metodo}</span><b>${sol(h.total)}</b></div>`).join('');
+  return `
+    <div class="box">
+      <b>Resumen de hoy</b>
+      <div class="row" style="justify-content:space-between"><span>Cuentas cobradas</span><b>${ventas.length}</b></div>
+      <div class="row" style="justify-content:space-between"><span>Platos vendidos</span><b>${platos}</b></div>
+      <div class="row" style="justify-content:space-between"><span>Total vendido</span><b>${sol(totalDia)}</b></div>
+    </div>
+    <div class="box"><b>Platos vendidos hoy</b>${ranking}</div>
+    <b>Cuentas de hoy</b>${lista || '<p class="muted">Sin cuentas cobradas hoy.</p>'}
+    <div style="margin-top:12px"><button class="red" onclick="borrarHistorial()">Borrar historial</button></div>`;
+}
+function borrarHistorial(){
+  if (!confirm('¿Borrar todo el historial?')) return;
+  S.historial = []; save(); render();
+}
+
+function vistaEditar(){
+  const filas = S.carta.map(it => `
+    <div class="box">
+      <input value="${esc(it.name)}" onchange="editItem(${it.id},'name',this.value)" placeholder="Nombre">
+      <div class="row">
+        <select onchange="editItem(${it.id},'cat',this.value)">
+          ${CATS.map(c => `<option ${c === it.cat ? 'selected' : ''}>${c}</option>`).join('')}
+        </select>
+        <input type="number" min="0" step="0.5" value="${it.price}" onchange="editItem(${it.id},'price',this.value)">
+        <button class="red" onclick="borrarItem(${it.id})">✕</button>
+      </div>
+    </div>`).join('');
+  return `
+    <div class="box">
+      <button onclick="agregarItem()" style="width:100%">+ Agregar plato</button>
+    </div>
+    ${filas}
+    <div class="box">
+      <b>Cambiar clave</b>
+      <input id="nuevaClave" type="password" placeholder="Nueva clave">
+      <button class="sec" onclick="cambiarClave()">Guardar clave</button>
+    </div>`;
+}
+function editItem(id, campo, valor){
+  const it = S.carta.find(x => x.id === id);
+  if (!it) return;
+  it[campo] = campo === 'price' ? Number(valor) || 0 : valor;
+  save(); render();
+}
+function borrarItem(id){
+  if (!confirm('¿Quitar este plato de la carta?')) return;
+  S.carta = S.carta.filter(x => x.id !== id);
+  Object.values(S.pedidos).forEach(p => delete p[id]);
+  save(); render();
+}
+function agregarItem(){
+  const id = Date.now();
+  S.carta.push({id, cat, name: 'Nuevo plato', price: 0});
+  save(); render();
+}
+function cambiarClave(){
+  const c = document.getElementById('nuevaClave').value.trim();
+  if (!c) { alert('Escribe una clave.'); return; }
+  S.clave = c; save(); alert('Clave cambiada.');
+}
+
+render();
+</script>
+</body>
+</html>
