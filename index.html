@@ -34,6 +34,17 @@ main{padding:10px}
 .modal.on{display:flex}
 .modal .box{width:100%;max-width:380px;margin:0;max-height:90vh;overflow:auto}
 .anulada{opacity:.55}
+.tabs{display:flex;gap:6px}
+.tabs button{flex:1;padding:10px 4px}
+.qnum{min-width:52px;height:52px;border-radius:10px;background:#fff;border:1.5px solid #6b7280;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:500;color:#123}
+.qbtn{width:52px;height:52px;border:0;border-radius:10px;font-size:26px;padding:0}
+.nombre{font-size:19px;font-weight:500;line-height:1.3;color:var(--text-primary)}
+.precio{font-size:17px;color:var(--text-secondary);margin-top:4px}
+.ticket{font-family:var(--font-mono,monospace);color:#123}
+.valgrande{font-size:28px}
+#desc,#pago,#prop{font-size:20px}
+.qty button:active{transform:scale(.9);box-shadow:0 0 0 4px #f5a623}
+button:disabled{opacity:.35;cursor:not-allowed}
 .anulada b{text-decoration:line-through}
 </style>
 </head>
@@ -184,10 +195,10 @@ function recalc(){
 function cobrar(){
   if (!subtotal()) return;
   showModal(`<h3 style="margin-top:0">Cobrar · Mesa ${mesa}</h3>
-    <div class="sp"><span>Subtotal</span><b>${sol(subtotal())}</b></div>
+    <div class="sp"><span style="font-size:19px">Subtotal</span><b class="valgrande">${sol(subtotal())}</b></div>
     <label>Descuento (S/, opcional)</label>
     <input id="desc" type="number" min="0" step="0.5" value="0" oninput="recalc()">
-    <div class="sp"><span>A pagar</span><b id="aPagar">${sol(subtotal())}</b></div>
+    <div class="sp"><span style="font-size:19px">A pagar</span><b id="aPagar" class="valgrande">${sol(subtotal())}</b></div>
     <label>Método de pago</label>
     <select id="metodo" onchange="recalc()"><option>Efectivo</option><option>Yape</option></select>
     <div id="bloqEf">
@@ -258,19 +269,34 @@ function ejecutarCb(){
 
 /* ---------- enviar a cocina ---------- */
 function enviarCocina(){
-  const txt = `CEVICHERÍA RONALD - Mesa ${mesa}\n` +
-    lineas().map(l => `${l.qty} x ${l.name}  ${sol(l.sub)}`).join('\n') +
+  const ls = lineas();
+  window.__ticketTxt = `CEVICHERÍA RONALD - Mesa ${mesa}\n` +
+    ls.map(l => `${l.qty} x ${l.name}  ${sol(l.sub)}`).join('\n') +
     `\nTOTAL: ${sol(subtotal())}`;
+  const filas = ls.map(l => `
+    <div style="display:flex;align-items:baseline;gap:8px;margin:8px 0">
+      <span style="color:#E24B4A;font-size:22px;line-height:1">●</span>
+      <span style="font-size:19px">${l.qty} x ${esc(l.name)}</span>
+      <span style="margin-left:auto;font-size:19px">${sol(l.sub)}</span>
+    </div>`).join('');
   showModal(`<h3 style="margin-top:0">Pedido para cocina</h3>
-    <textarea id="txtc" rows="8" readonly>${esc(txt)}</textarea>
-    <div class="row"><button class="ok" style="flex:1" onclick="copiarTxt()">Copiar</button>
+    <div class="ticket">
+      <div style="font-size:22px;font-weight:500">CEVICHERÍA RONALD</div>
+      <div style="font-size:26px;font-weight:500;margin-bottom:8px">Mesa ${mesa}</div>
+      ${filas}
+      <div style="border-top:0.5px solid #999;margin-top:10px;padding-top:8px;font-size:24px;font-weight:500">TOTAL: ${sol(subtotal())}</div>
+    </div>
+    <div class="row" style="margin-top:12px"><button class="ok" style="flex:1" onclick="copiarTxt()">Copiar</button>
     <button class="sec" style="flex:1" onclick="cerrarModal()">Cerrar</button></div>`);
 }
 function copiarTxt(){
-  const t = document.getElementById('txtc');
-  t.select();
+  const ta = document.createElement('textarea');
+  ta.value = window.__ticketTxt || '';
+  document.body.appendChild(ta);
+  ta.select();
   let ok = false;
   try { ok = document.execCommand('copy'); } catch(e) {}
+  document.body.removeChild(ta);
   showMsg(ok ? 'Copiado' : 'No se pudo copiar', ok ? 'Pégalo en WhatsApp.' : 'Selecciónalo y cópialo a mano.');
 }
 
@@ -342,14 +368,14 @@ function vistaCarta(){
     `<button style="background:${cat === c ? CATS[c] : '#dde3e8'};color:${cat === c ? '#fff' : '#123'}" onclick="cat='${c}';render()">${c}</button>`).join(' ');
   const items = S.carta.filter(it => it.cat === cat).map(it => `
     <div class="card" style="--c:${CATS[it.cat]}">
-      <div><b>${esc(it.name)}</b><div class="muted">${sol(it.price)}</div></div>
+      <div style="flex:1;min-width:0"><div class="nombre">${esc(it.name)}</div><div class="precio">${sol(it.price)}</div></div>
       <div class="qty">
-        <button class="sec" onclick="cambiarQty(${it.id},-1)">−</button>
-        <b>${p.items[it.id] || 0}</b>
-        <button onclick="cambiarQty(${it.id},1)">+</button>
+        <button class="sec qbtn" ${p.items[it.id] ? '' : 'disabled'} onclick="cambiarQty(${it.id},-1)">−</button>
+        <div class="qnum">${p.items[it.id] || 0}</div>
+        <button class="qbtn" onclick="cambiarQty(${it.id},1)">+</button>
       </div>
     </div>`).join('');
-  return `<div class="box">${tabs}</div>${items}`;
+  return `<div class="box tabs">${tabs}</div>${items}`;
 }
 function vistaCuenta(){
   const ls = lineas();
